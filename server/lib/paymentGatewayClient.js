@@ -147,13 +147,14 @@ class PaymentGatewayClient {
     });
   }
 
-  async createWallet({ email, currency, fiatCurrency, network }) {
+  async createWallet({ email, currency, fiatCurrency, network, otp }) {
     return this.request("POST", "/api/create-wallet", {
       merchantId: this.merchantId,
       email,
       currency,
       fiatCurrency,
       network,
+      ...(otp ? { otp } : {}),
     });
   }
 

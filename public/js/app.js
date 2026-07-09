@@ -254,14 +254,53 @@ document.getElementById("home-wallet-refresh")?.addEventListener("click", async 
 
   statusDiv.innerHTML = "Checking/Creating wallet...";
   try {
-    const balRes = await storeApi.gatewayWalletBalance({ email, currency: "XDC", fiatCurrency: "usd", network: "Xinfin" });
-    if (balRes.success === false || balRes.status === false) {
+    const balRes = await storeApi.gatewayCreateWallet({ email, currency: "XDC", fiatCurrency: "usd", network: "Xinfin" });
+    
+    if (balRes.message === "Please enable 2fa") {
+      statusDiv.innerHTML = "Please complete 2FA setup.";
+      document.getElementById("modal-2fa-email").value = email;
+      document.getElementById("modal-2fa-qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(balRes.data.otpauth_url)}`;
+      document.getElementById("enable-2fa-modal").showModal();
+    } else if (balRes.success === false || balRes.status === false) {
       statusDiv.innerHTML = `Error: ${balRes.message}`;
     } else {
-      statusDiv.innerHTML = `Balance: <strong>${balRes.data?.balance || 0} XDC</strong><br/>Address: <code>${balRes.data?.walletAddress || 'N/A'}</code>`;
+      statusDiv.innerHTML = `Wallet successfully retrieved!<br/>Balance: <strong>${balRes.data?.balance || 0} XDC</strong><br/>Address: <code>${balRes.data?.walletAddress || 'N/A'}</code>`;
     }
   } catch (err) {
     statusDiv.innerHTML = `Error: ${err.message}`;
+  }
+});
+
+document.getElementById("close-2fa-modal")?.addEventListener("click", () => {
+  document.getElementById("enable-2fa-modal").close();
+});
+
+document.getElementById("enable-2fa-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("modal-2fa-email").value;
+  const token = document.getElementById("modal-2fa-otp").value;
+  const btn = document.getElementById("modal-2fa-verify-btn");
+  
+  btn.disabled = true;
+  btn.textContent = "Verifying...";
+  
+  try {
+    const res = await storeApi.gatewayCreateWallet({ email, currency: "XDC", fiatCurrency: "usd", network: "Xinfin", otp: token });
+    if (res.success || res.status) {
+      toast("2FA enabled and Wallet retrieved successfully!");
+      document.getElementById("enable-2fa-modal").close();
+      document.getElementById("enable-2fa-form").reset();
+      
+      const statusDiv = document.getElementById("home-wallet-status");
+      statusDiv.innerHTML = `Wallet successfully retrieved!<br/>Balance: <strong>${res.data?.balance || 0} XDC</strong><br/>Address: <code>${res.data?.walletAddress || 'N/A'}</code>`;
+    } else {
+      toast(res.message || "Invalid OTP", "error");
+    }
+  } catch (err) {
+    toast(err.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Verify & Enable";
   }
 });
 

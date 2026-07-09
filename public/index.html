@@ -344,6 +344,27 @@
       </form>
     </dialog>
 
+    <!-- 2FA Enable Modal -->
+    <dialog id="enable-2fa-modal" class="modal">
+      <form id="enable-2fa-form" method="dialog" class="modal-content">
+        <div class="modal-header">
+          <h3>Enable 2FA</h3>
+          <button type="button" class="close-btn" id="close-2fa-modal">&times;</button>
+        </div>
+        <p class="hint">Please scan the QR code to enable 2FA for your account.</p>
+        <div style="text-align: center; margin: 1rem 0;">
+          <img id="modal-2fa-qr" src="" alt="2FA QR Code" style="border: 1px solid #333; border-radius: 8px; padding: 10px; background: white; max-width: 200px;" />
+        </div>
+        <input type="hidden" id="modal-2fa-email" />
+        <div class="form">
+          <label>OTP Code <input type="text" id="modal-2fa-otp" required placeholder="123456" /></label>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary" id="modal-2fa-verify-btn">Verify & Enable</button>
+        </div>
+      </form>
+    </dialog>
+
     <div id="toast" class="toast hidden"></div>
 
     <script src="/js/api.js"></script>
