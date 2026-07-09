@@ -434,25 +434,17 @@ document.getElementById("otp-form")?.addEventListener("submit", async (e) => {
   btn.disabled = true;
   btn.textContent = "Verifying...";
   
-  const email = form.email.value;
   const token = form.otp.value;
   const tokenId = form.tokenId.value;
 
   try {
-    const verifyRes = await storeApi.gatewayUserOTPVerify({ email, token });
-    if (verifyRes.success || verifyRes.status) {
-      btn.textContent = "Confirming Payment...";
-      const confirmRes = await storeApi.gatewayConfirmInternalPayment({ tokenId });
-      
-      if (confirmRes.success || confirmRes.status) {
-        toast("Internal payment confirmed successfully!");
-        document.getElementById("otp-modal").close();
-        // Option to refresh data if necessary, e.g., loadOrders() if implemented.
-      } else {
-        toast(confirmRes.message || "Failed to confirm internal payment", "error");
-      }
+    const confirmRes = await storeApi.gatewayConfirmInternalPayment({ tokenId, otp: token });
+    
+    if (confirmRes.success || confirmRes.status) {
+      toast("Internal payment confirmed successfully!");
+      document.getElementById("otp-modal").close();
     } else {
-      toast(verifyRes.message || "Invalid OTP", "error");
+      toast(confirmRes.message || "Failed to confirm internal payment", "error");
     }
   } catch (err) {
     toast(err.message, "error");
