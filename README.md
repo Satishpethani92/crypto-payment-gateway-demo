@@ -1,5 +1,13 @@
 # Demo Merchant Store — Payment Gateway Integration
 
+## Demo Videos
+
+### Internal Payment Flow
+https://github.com/user-attachments/assets/ecc3d754-aa69-4ddf-959b-cfbe08c7fd34
+
+### External Payment Flow
+https://github.com/user-attachments/assets/49b627d6-c522-4e06-a3db-cc1b720186c1
+
 A standalone demo project that prototypes a **real merchant integration** with the Crypto Payment Gateway. It simulates how an external e-commerce store would call your gateway APIs from a **server-side backend** (never exposing API secrets in the browser).
 
 ## What this demonstrates
