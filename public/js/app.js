@@ -300,7 +300,7 @@ document.getElementById("enable-2fa-form")?.addEventListener("submit", async (e)
     toast(err.message, "error");
   } finally {
     btn.disabled = false;
-    btn.textContent = "Verify & Enable";
+    btn.textContent = "Create Wallet";
   }
 });
 
