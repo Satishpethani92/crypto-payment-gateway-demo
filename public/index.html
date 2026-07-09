@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo Merchant Store — Payment Gateway Integration</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div class="header-inner">
+        <div class="brand">
+          <span class="brand-icon">◈</span>
+          <div>
+            <h1 id="store-name">Demo Merchant Store</h1>
+            <p class="subtitle">
+              Full <a id="swagger-link" href="https://betapg.icotokens.net/api-docs/" target="_blank">Swagger API</a> integration
+            </p>
+          </div>
+        </div>
+        <nav class="nav">
+          <button class="nav-btn active" data-tab="store">Store</button>
+          <button class="nav-btn" data-tab="rates">Rates & Networks</button>
+          <button class="nav-btn" data-tab="orders">Orders</button>
+          <button class="nav-btn" data-tab="wallets">Wallets</button>
+          <button class="nav-btn" data-tab="apis">API Explorer</button>
+          <button class="nav-btn" data-tab="webhooks">Webhooks</button>
+          <button class="nav-btn" data-tab="integration">Log</button>
+          <button class="nav-btn" data-tab="history">History</button>
+        </nav>
+        <div id="gateway-badge" class="badge badge-warn">Gateway: checking…</div>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Store Front (Home) -->
+      <section id="tab-store" class="tab active">
+        <div class="card" style="margin-bottom: 2rem;">
+          <h3>User Wallet</h3>
+          <p class="hint">Enter your email and click refresh to check or create a wallet automatically.</p>
+          <div style="display: flex; gap: 0.5rem; max-width: 600px; margin-top: 1rem;">
+            <input type="email" id="home-wallet-email" placeholder="Customer Email (e.g. user@example.com)" style="flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--text); font-size: 0.875rem;" />
+            <button class="btn btn-primary" id="home-wallet-refresh">Refresh</button>
+            <button class="btn btn-secondary" id="home-wallet-2fa-status">Check 2FA Status</button>
+          </div>
+          <div id="home-wallet-status" class="mt hint"></div>
+          <div id="home-2fa-status-msg" class="mt"></div>
+        </div>
+
+        <div id="products-section" class="hidden">
+          <div class="store-header">
+            <div>
+              <h2>Products</h2>
+              <p class="hint">Checkout uses <code>GET /api/network-with-currency</code>, <code>GET /api/rates/{id}</code>, and <code>POST /api/payment</code>.</p>
+            </div>
+          </div>
+          <div id="catalog-status" class="catalog-banner hidden"></div>
+          <div id="products-grid" class="products-grid"></div>
+        </div>
+      </section>
+
+      <!-- Rates & Networks -->
+      <section id="tab-rates" class="tab">
+        <div class="section-header">
+          <div>
+            <h2>Rates & Networks</h2>
+            <p>Live data from gateway — <code>GET /api/networks</code>, <code>GET /api/network-with-currency</code>, <code>GET /api/rates/{currencyId}</code></p>
+          </div>
+          <button id="refresh-catalog" class="btn btn-primary">Refresh All</button>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Networks <span class="api-tag">GET /api/networks</span></h3>
+            <div id="networks-panel" class="data-panel"><div class="empty-state">Loading…</div></div>
+          </div>
+          <div class="card">
+            <h3>Network With Currency <span class="api-tag">GET /api/network-with-currency</span></h3>
+            <div id="network-currency-panel" class="data-panel"><div class="empty-state">Loading…</div></div>
+          </div>
+        </div>
+
+        <div class="card mt">
+          <div class="section-header" style="margin-bottom:0.75rem">
+            <h3>Currency Rates <span class="api-tag">GET /api/rates/{currencyId}</span></h3>
+            <select id="rate-fiat-filter" class="select-inline">
+              <option value="">All fiat currencies</option>
+              <option value="inr">INR only</option>
+              <option value="usd">USD only</option>
+              <option value="eur">EUR only</option>
+            </select>
+          </div>
+          <div id="rates-panel" class="rates-grid"></div>
+        </div>
+      </section>
+
+      <!-- Orders -->
+      <section id="tab-orders" class="tab">
+        <div class="section-header">
+          <div>
+            <h2>Orders</h2>
+            <p><code>POST /api/payment-status</code> · <code>POST /api/refund</code></p>
+          </div>
+          <button id="refresh-orders" class="btn btn-secondary">Refresh</button>
+        </div>
+        <div id="orders-list" class="orders-list"></div>
+      </section>
+
+      <!-- Wallets -->
+      <section id="tab-wallets" class="tab">
+        <div class="section-header">
+          <div>
+            <h2>Wallets</h2>
+            <p><code>POST /api/create-wallet</code> · <code>POST /api/wallet-balance</code></p>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Create User Wallet</h3>
+            <form id="wallet-form" class="form">
+              <label>Email <input type="email" name="email" required placeholder="customer@example.com" /></label>
+              <label>Network <select name="network" id="wallet-network" required></select></label>
+              <label>Currency <select name="currency" id="wallet-currency" required></select></label>
+              <label>Fiat Currency
+                <select name="fiatCurrency">
+                  <option value="inr">INR</option>
+                  <option value="usd">USD</option>
+                  <option value="aed">AED</option>
+                  <option value="eur">EUR</option>
+                </select>
+              </label>
+              <button type="submit" class="btn btn-primary">Create Wallet</button>
+            </form>
+          </div>
+          <div class="card">
+            <h3>Check Wallet Balance</h3>
+            <form id="balance-form" class="form">
+              <label>Email <input type="email" name="email" required /></label>
+              <label>Currency <select name="currency" id="balance-currency"></select></label>
+              <button type="submit" class="btn btn-secondary">Get Balance</button>
+            </form>
+            <pre id="balance-result" class="code-block hidden"></pre>
+          </div>
+        </div>
+        <div class="card mt">
+          <h3>Enable 2FA for Wallet</h3>
+          <p class="hint">Generates a Google Authenticator Secret for the user via Gateway API.</p>
+          <form id="wallet-2fa-form" class="form">
+            <label>Email <input type="email" name="email" id="wallet-2fa-email" required /></label>
+            <button type="submit" class="btn btn-secondary">Generate 2FA</button>
+          </form>
+          <div id="wallet-2fa-setup" class="hidden mt">
+            <div style="margin-bottom: 1rem;">
+              <img id="wallet-2fa-qr" src="" alt="2FA QR Code" style="border: 1px solid #333; border-radius: 8px; padding: 10px; background: white;" />
+            </div>
+            <p><strong>Secret (Base32):</strong> <code id="wallet-2fa-secret"></code></p>
+            <p class="hint">Use Google Authenticator or an extension to scan the QR code/secret.</p>
+            <form id="wallet-2fa-verify-form" class="form mt">
+              <input type="hidden" id="wallet-2fa-verify-email" />
+              <label>Verify OTP <input type="text" id="wallet-2fa-otp" required placeholder="123456" /></label>
+              <button type="submit" class="btn btn-primary">Verify & Enable</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- API Explorer — all 8 Swagger endpoints -->
+      <section id="tab-apis" class="tab">
+        <div class="section-header">
+          <div>
+            <h2>API Explorer</h2>
+            <p>Call every endpoint from <a href="https://betapg.icotokens.net/api-docs/" target="_blank">Swagger docs</a> via server-side signing.</p>
+          </div>
+        </div>
+        <div id="api-explorer" class="api-explorer-grid"></div>
+      </section>
+
+      <!-- Webhooks — payment confirmation events -->
+      <section id="tab-webhooks" class="tab">
+        <div class="section-header">
+          <div>
+            <h2>Payment Confirmation Webhooks</h2>
+            <p>Receive <strong>COMPLETED</strong> payment events from the gateway when a transaction is confirmed on-chain.</p>
+          </div>
+          <button id="refresh-webhooks" class="btn btn-secondary">Refresh</button>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Setup</h3>
+            <ol class="setup-steps" id="webhook-setup-steps"></ol>
+            <div class="webhook-url-box mt">
+              <label>Webhook URL — register in gateway admin <span class="api-tag">POST</span></label>
+              <div class="copy-row">
+                <code id="webhook-url-display"></code>
+                <button type="button" class="btn btn-secondary btn-sm" id="copy-webhook-url">Copy</button>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>How it works</h3>
+            <div class="flow-diagram">
+              <div class="flow-step">1. Register webhook URL in gateway admin</div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">2. Customer pays → status COMPLETED</div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">3. Gateway POSTs to <code>/webhooks/payment</code></div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">4. Demo order marked PAID</div>
+            </div>
+            <p class="hint mt">
+              Local testing: <code>ngrok http 4000</code> → register
+              <code>https://xxxx.ngrok.io/webhooks/payment</code> in gateway admin.
+            </p>
+          </div>
+        </div>
+
+        <div class="card mt">
+          <h3>Payment Confirmation Events</h3>
+          <div id="webhook-events" class="webhook-events"></div>
+        </div>
+      </section>
+
+      <!-- Integration log -->
+      <section id="tab-integration" class="tab">
+        <div class="section-header">
+          <h2>Integration Log</h2>
+          <button id="refresh-log" class="btn btn-secondary">Refresh</button>
+        </div>
+        <div id="api-log" class="api-log"></div>
+        <h3 class="mt">Raw Webhook Log</h3>
+        <p class="hint">All incoming payment confirmation events.</p>
+        <div id="webhook-log" class="api-log"></div>
+      </section>
+
+      <!-- User Transaction History -->
+      <section id="tab-history" class="tab">
+        <div class="section-header">
+          <div>
+            <h2>Transaction History</h2>
+            <p><code>POST /api/transaction-history</code></p>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Fetch User Ledger</h3>
+          <form id="history-form" class="form">
+            <label>Email <input type="email" name="email" id="history-email" required placeholder="customer@example.com" /></label>
+            <button type="submit" class="btn btn-primary">Get History</button>
+          </form>
+          <div id="history-result" class="mt hidden">
+            <table class="table" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                  <th style="padding: 0.5rem;">Date</th>
+                  <th style="padding: 0.5rem;">Type</th>
+                  <th style="padding: 0.5rem;">Status</th>
+                  <th style="padding: 0.5rem;">Amount (Crypto)</th>
+                  <th style="padding: 0.5rem;">Amount (Fiat)</th>
+                  <th style="padding: 0.5rem;">Tx Hash</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Checkout modal -->
+    <dialog id="checkout-modal" class="modal">
+      <form id="checkout-form" method="dialog" class="modal-content">
+        <div class="modal-header">
+          <h3>Checkout <span class="api-tag">POST /api/payment</span></h3>
+          <button type="button" class="close-btn" id="close-checkout">&times;</button>
+        </div>
+        <div id="checkout-product" class="checkout-product"></div>
+        <div id="rate-preview" class="rate-preview hidden"></div>
+        <div class="form">
+          <label>Customer Email <input type="email" name="email" required placeholder="customer@example.com" /></label>
+          <label>Amount (fiat) <input type="text" name="amount" required /></label>
+          <label>Fiat Currency
+            <select name="fiatCurrency" id="checkout-fiat">
+              <option value="inr">INR</option>
+              <option value="usd">USD</option>
+              <option value="aed">AED</option>
+              <option value="eur">EUR</option>
+              <option value="sgd">SGD</option>
+              <option value="gbp">GBP</option>
+              <option value="jpy">JPY</option>
+            </select>
+          </label>
+          <label>Network <select name="network" id="checkout-network" required></select></label>
+          <label>Crypto Currency <select name="currency" id="checkout-currency" required></select></label>
+          <label>Transaction Type
+            <select name="transactionType">
+              <option value="external">External (on-chain)</option>
+              <option value="internal">Internal (wallet balance)</option>
+            </select>
+          </label>
+        </div>
+        <div class="modal-footer">
+          <p class="hint">Rate fetched via <code>GET /api/rates/{currencyId}</code> before payment.</p>
+          <button type="submit" class="btn btn-primary" id="pay-btn">Pay with Crypto Gateway</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Refund modal -->
+    <dialog id="refund-modal" class="modal">
+      <form id="refund-form" method="dialog" class="modal-content">
+        <div class="modal-header">
+          <h3>Request Refund <span class="api-tag">POST /api/refund</span></h3>
+          <button type="button" class="close-btn" id="close-refund">&times;</button>
+        </div>
+        <input type="hidden" name="orderId" id="refund-order-id" />
+        <div class="form">
+          <label>Refund Address <input type="text" name="userRefundAddress" required placeholder="0x…" /></label>
+          <label>Refund Amount (crypto) <input type="text" name="refundAmount" required /></label>
+          <label>Original Amount <input type="text" name="amount" id="refund-amount" /></label>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Submit Refund</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- OTP Modal for Internal Payment -->
+    <dialog id="otp-modal" class="modal">
+      <form id="otp-form" method="dialog" class="modal-content">
+        <div class="modal-header">
+          <h3>Verify 2FA OTP</h3>
+          <button type="button" class="close-btn" id="close-otp">&times;</button>
+        </div>
+        <p class="hint">Enter the OTP from your Authenticator app to confirm the internal payment.</p>
+        <input type="hidden" name="email" id="otp-email" />
+        <input type="hidden" name="tokenId" id="otp-tokenId" />
+        <div class="form">
+          <label>OTP Code <input type="text" name="otp" id="otp-code" required placeholder="123456" /></label>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary" id="otp-confirm-btn">Confirm Payment</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/app.js"></script>
+  </body>
+</html>
