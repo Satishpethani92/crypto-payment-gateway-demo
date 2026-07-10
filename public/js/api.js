@@ -38,7 +38,7 @@ const storeApi = {
     return api(`/api/gateway/rates/${currencyId}${q}`).then((r) => r.data);
   },
   gatewayPayment: (body) => api("/api/gateway/payment", { method: "POST", body: JSON.stringify(body) }).then((r) => r.data),
-  gatewayConfirmInternalPayment: (body) => api("/api/gateway/confirm-internal", { method: "POST", body: JSON.stringify(body) }).then((r) => r.data),
+
   gatewayPaymentStatus: (body) => api("/api/gateway/payment-status", { method: "POST", body: JSON.stringify(body) }).then((r) => r.data),
   gatewayRefund: (body) => api("/api/gateway/refund", { method: "POST", body: JSON.stringify(body) }).then((r) => r.data),
   gatewayCreateWallet: (body) => api("/api/gateway/create-wallet", { method: "POST", body: JSON.stringify(body) }).then((r) => r.data),

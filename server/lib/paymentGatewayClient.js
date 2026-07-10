@@ -134,12 +134,7 @@ class PaymentGatewayClient {
     });
   }
 
-  async confirmInternalPayment({ tokenId, otp }) {
-    return this.request("POST", "/api/payment/confirm-internal", {
-      tokenId,
-      ...(otp ? { otp } : {}),
-    });
-  }
+
 
   async getPaymentStatus({ paymentId, clientOrderId }) {
     return this.request("POST", "/api/payment-status", {

@@ -178,17 +178,7 @@ app.post("/api/gateway/payment", async (req, res) => {
   }
 });
 
-app.post("/api/gateway/confirm-internal", async (req, res) => {
-  const client = getGatewayClient();
-  if (!client) return gatewayNotConfigured(res);
-  try {
-    const result = await client.confirmInternalPayment(req.body);
-    logGatewayCall("POST /api/payment/confirm-internal", result);
-    res.status(result.status).json(result.data);
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+
 
 app.post("/api/gateway/payment-status", async (req, res) => {
   const client = getGatewayClient();

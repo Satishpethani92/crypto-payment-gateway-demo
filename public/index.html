@@ -293,10 +293,13 @@
           <label>Network <select name="network" id="checkout-network" required></select></label>
           <label>Crypto Currency <select name="currency" id="checkout-currency" required></select></label>
           <label>Transaction Type
-            <select name="transactionType">
+            <select name="transactionType" id="checkout-transaction-type">
               <option value="external">External (on-chain)</option>
               <option value="internal">Internal (wallet balance)</option>
             </select>
+          </label>
+          <label id="checkout-otp-container" class="hidden">OTP (for internal payment)
+            <input type="text" name="otp" id="checkout-otp" placeholder="123456" />
           </label>
         </div>
         <div class="modal-footer">
@@ -325,24 +328,7 @@
       </form>
     </dialog>
 
-    <!-- OTP Modal for Internal Payment -->
-    <dialog id="otp-modal" class="modal">
-      <form id="otp-form" method="dialog" class="modal-content">
-        <div class="modal-header">
-          <h3>Verify 2FA OTP</h3>
-          <button type="button" class="close-btn" id="close-otp">&times;</button>
-        </div>
-        <p class="hint">Enter the OTP from your Authenticator app to confirm the internal payment.</p>
-        <input type="hidden" name="email" id="otp-email" />
-        <input type="hidden" name="tokenId" id="otp-tokenId" />
-        <div class="form">
-          <label>OTP Code <input type="text" name="otp" id="otp-code" required placeholder="123456" /></label>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary" id="otp-confirm-btn">Confirm Payment</button>
-        </div>
-      </form>
-    </dialog>
+
 
     <!-- 2FA Enable Modal -->
     <dialog id="enable-2fa-modal" class="modal">

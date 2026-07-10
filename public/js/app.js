@@ -377,6 +377,16 @@ document.getElementById("checkout-network")?.addEventListener("change", (e) => {
 document.getElementById("close-checkout").addEventListener("click", () => {
   document.getElementById("checkout-modal").close();
 });
+document.getElementById("checkout-transaction-type")?.addEventListener("change", (e) => {
+  const otpContainer = document.getElementById("checkout-otp-container");
+  if (e.target.value === "internal") {
+    otpContainer.classList.remove("hidden");
+    document.getElementById("checkout-otp").required = true;
+  } else {
+    otpContainer.classList.add("hidden");
+    document.getElementById("checkout-otp").required = false;
+  }
+});
 
 document.getElementById("checkout-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -396,19 +406,18 @@ document.getElementById("checkout-form").addEventListener("submit", async (e) =>
       transactionType: form.transactionType.value,
       productId: selectedProduct?.id,
       description: selectedProduct?.name,
+      otp: form.otp?.value,
     });
 
     if (result.success || result.status) {
       document.getElementById("checkout-modal").close();
       
-      if (form.transactionType.value === "internal" && result.data?.tokenId) {
-        // Open OTP modal for internal payment
-        document.getElementById("otp-email").value = form.email.value;
-        document.getElementById("otp-tokenId").value = result.data.tokenId;
-        document.getElementById("otp-modal").showModal();
+      if (form.transactionType.value === "internal") {
+        toast("Internal payment completed successfully!");
+        document.getElementById("refresh-orders")?.click();
+        document.getElementById("home-wallet-refresh")?.click();
       } else if (result.data?.redirectUrl) {
-        // External payment, fallback redirect
-        toast("Redirecting to payment gateway…");
+        toast("Redirecting to payment receipt…");
         window.location.href = result.data.redirectUrl;
       }
     } else {
@@ -422,37 +431,7 @@ document.getElementById("checkout-form").addEventListener("submit", async (e) =>
   }
 });
 
-document.getElementById("close-otp")?.addEventListener("click", () => {
-  document.getElementById("otp-modal").close();
-});
 
-document.getElementById("otp-form")?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const form = e.target;
-  const btn = document.getElementById("otp-confirm-btn");
-  
-  btn.disabled = true;
-  btn.textContent = "Verifying...";
-  
-  const token = form.otp.value;
-  const tokenId = form.tokenId.value;
-
-  try {
-    const confirmRes = await storeApi.gatewayConfirmInternalPayment({ tokenId, otp: token });
-    
-    if (confirmRes.success || confirmRes.status) {
-      toast("Internal payment confirmed successfully!");
-      document.getElementById("otp-modal").close();
-    } else {
-      toast(confirmRes.message || "Failed to confirm internal payment", "error");
-    }
-  } catch (err) {
-    toast(err.message, "error");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Confirm Payment";
-  }
-});
 
 document.getElementById("wallet-2fa-form")?.addEventListener("submit", async (e) => {
   e.preventDefault();
