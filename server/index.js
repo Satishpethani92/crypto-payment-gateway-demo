@@ -296,12 +296,30 @@ app.get("/api/quote", async (req, res) => {
     const result = await client.getCurrencyRate(currencyId, [fiatCurrency]);
     logGatewayCall(`GET /api/rates/${currencyId}?rate=${fiatCurrency}`, result);
 
-    if (!result.data?.success || !result.data?.data?.rates) {
-      return res.status(result.status).json(result.data);
+    const gatewayBody = result.data || {};
+    const ratesPayload = gatewayBody.data || {};
+    const rates = ratesPayload.rates || {};
+    const gatewayOk = gatewayBody.success === true || gatewayBody.status === true;
+
+    if (!gatewayOk || !rates || typeof rates !== "object") {
+      return res.status(result.status || 502).json({
+        success: false,
+        message: gatewayBody.message || "Rate unavailable",
+        data: gatewayBody,
+      });
     }
 
-    const rate = Number(result.data.data.rates[fiatCurrency]);
+    const fiatKey = Object.keys(rates).find((k) => k.toLowerCase() === String(fiatCurrency).toLowerCase());
+    const rate = fiatKey != null ? Number(rates[fiatKey]) : NaN;
     const cryptoAmount = rate > 0 ? (Number(amount) / rate).toFixed(8) : null;
+
+    if (!cryptoAmount) {
+      return res.status(502).json({
+        success: false,
+        message: `Could not calculate crypto amount for ${currency}/${fiatCurrency}`,
+        data: { rate, rates, fiatCurrency, currency },
+      });
+    }
 
     res.json({
       success: true,
@@ -312,7 +330,7 @@ app.get("/api/quote", async (req, res) => {
         currencyId,
         rate,
         cryptoAmount,
-        rateData: result.data.data,
+        rateData: ratesPayload,
       },
     });
   } catch (err) {

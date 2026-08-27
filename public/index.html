@@ -37,7 +37,7 @@
       <section id="tab-store" class="tab active">
         <div class="card" style="margin-bottom: 2rem;">
           <h3>User Wallet</h3>
-          <p class="hint">Enter your email and click refresh to check or create a wallet automatically.</p>
+          <p class="hint">Enter your email — wallet and 2FA status are checked automatically. Products appear when the user is verified.</p>
           <div style="display: flex; gap: 0.5rem; max-width: 600px; margin-top: 1rem;">
             <input type="email" id="home-wallet-email" placeholder="Customer Email (e.g. user@example.com)" style="flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--text); font-size: 0.875rem;" />
             <button class="btn btn-primary" id="home-wallet-refresh">Refresh</button>
@@ -278,7 +278,20 @@
         <div id="rate-preview" class="rate-preview hidden"></div>
         <div class="form">
           <label>Customer Email <input type="email" name="email" required placeholder="customer@example.com" /></label>
-          <label>Amount (fiat) <input type="text" name="amount" required /></label>
+          <label>Amount (fiat)
+            <div class="amount-stepper">
+              <button type="button" class="btn btn-secondary amount-step-btn" id="amount-decrease" aria-label="Decrease amount by 5">−</button>
+              <input type="number" name="amount" id="checkout-amount" required step="5" />
+              <button type="button" class="btn btn-secondary amount-step-btn" id="amount-increase" aria-label="Increase amount by 5">+</button>
+            </div>
+          </label>
+          <div id="crypto-amount-box" class="crypto-amount-box">
+            <div class="crypto-amount-info">
+              <span class="crypto-amount-label">You pay (crypto)</span>
+              <strong id="crypto-amount-value">—</strong>
+            </div>
+            <button type="button" class="btn btn-primary" id="calculate-price-btn">Calculate Price</button>
+          </div>
           <label>Fiat Currency
             <select name="fiatCurrency" id="checkout-fiat">
               <option value="inr">INR</option>

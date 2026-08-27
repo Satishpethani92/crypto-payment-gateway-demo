@@ -237,38 +237,178 @@ window.openCheckout = async function (productId) {
   form.amount.value = selectedProduct.price;
   form.fiatCurrency.value = selectedProduct.currency;
 
+  const homeEmail = document.getElementById("home-wallet-email")?.value?.trim();
+  if (homeEmail) form.email.value = homeEmail;
+
   const list = catalog?.networkWithCurrency?.data || [];
   if (list.length) {
     form.network.value = list[0].network;
     updateCurrencySelectForNetwork(list[0].network, list);
   }
 
-  await updateRatePreview();
+  setCryptoAmountDisplay("—");
+  document.getElementById("rate-preview")?.classList.add("hidden");
   document.getElementById("checkout-modal").showModal();
 };
 
-document.getElementById("home-wallet-refresh")?.addEventListener("click", async () => {
-  const email = document.getElementById("home-wallet-email").value;
-  const statusDiv = document.getElementById("home-wallet-status");
-  if (!email) return toast("Please enter customer email", "error");
+const AMOUNT_STEP = 5;
+const AMOUNT_MIN = 5;
 
-  statusDiv.innerHTML = "Checking/Creating wallet...";
+function adjustCheckoutAmount(delta) {
+  const form = document.getElementById("checkout-form");
+  const current = Number(form.amount.value);
+  const base = Number.isFinite(current) ? current : AMOUNT_MIN;
+  if (delta < 0 && base <= AMOUNT_MIN) return;
+  const next = Math.round((base + delta) * 100) / 100;
+  form.amount.value = Math.max(AMOUNT_MIN, next);
+  resetCryptoQuote();
+}
+
+document.getElementById("amount-decrease")?.addEventListener("click", () => {
+  adjustCheckoutAmount(-AMOUNT_STEP);
+});
+
+document.getElementById("amount-increase")?.addEventListener("click", () => {
+  adjustCheckoutAmount(AMOUNT_STEP);
+});
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+}
+
+function hideProducts() {
+  document.getElementById("products-section")?.classList.add("hidden");
+}
+
+function showProducts() {
+  document.getElementById("products-section")?.classList.remove("hidden");
+}
+
+/** @returns {Promise<"ready"|"needs_2fa"|"error"|"empty">} */
+async function refreshWallet(email, { silentEmpty = false, isCurrent = () => true } = {}) {
+  const statusDiv = document.getElementById("home-wallet-status");
+  if (!email) {
+    if (!silentEmpty) toast("Please enter customer email", "error");
+    if (isCurrent()) statusDiv.innerHTML = "";
+    return "empty";
+  }
+
+  if (isCurrent()) statusDiv.innerHTML = "Checking/Creating wallet...";
   try {
-    const balRes = await storeApi.gatewayCreateWallet({ email, currency: "XDC", fiatCurrency: "usd", network: "Xinfin" });
-    
+    const balRes = await storeApi.gatewayCreateWallet({
+      email,
+      currency: "XDC",
+      fiatCurrency: "usd",
+      network: "Xinfin",
+    });
+    if (!isCurrent()) return "empty";
+
     if (balRes.message === "Please enable 2fa") {
       statusDiv.innerHTML = "Please complete 2FA setup.";
       document.getElementById("modal-2fa-email").value = email;
       document.getElementById("modal-2fa-qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(balRes.data.otpauth_url)}`;
       document.getElementById("enable-2fa-modal").showModal();
-    } else if (balRes.success === false || balRes.status === false) {
-      statusDiv.innerHTML = `Error: ${balRes.message}`;
-    } else {
-      statusDiv.innerHTML = `Wallet successfully retrieved!<br/>Balance: <strong>${balRes.data?.balance || 0} XDC</strong><br/>Address: <code>${balRes.data?.walletAddress || 'N/A'}</code>`;
+      hideProducts();
+      return "needs_2fa";
     }
+
+    if (balRes.success === false || balRes.status === false) {
+      statusDiv.innerHTML = `Error: ${balRes.message}`;
+      hideProducts();
+      return "error";
+    }
+
+    statusDiv.innerHTML = `Wallet successfully retrieved!<br/>Balance: <strong>${balRes.data?.balance || 0} XDC</strong><br/>Address: <code>${balRes.data?.walletAddress || "N/A"}</code>`;
+    return "ready";
   } catch (err) {
+    if (!isCurrent()) return "empty";
     statusDiv.innerHTML = `Error: ${err.message}`;
+    hideProducts();
+    return "error";
   }
+}
+
+/** @returns {Promise<boolean>} whether user is verified */
+async function check2FAStatus(email, { silentEmpty = false, isCurrent = () => true } = {}) {
+  const statusMsg = document.getElementById("home-2fa-status-msg");
+  if (!email) {
+    if (!silentEmpty) toast("Please enter customer email", "error");
+    if (isCurrent()) {
+      statusMsg.innerHTML = "";
+      hideProducts();
+    }
+    return false;
+  }
+
+  if (isCurrent()) statusMsg.innerHTML = "Checking 2FA status...";
+
+  try {
+    const res = await storeApi.gatewayUser2FAStatus({ email });
+    if (!isCurrent()) return false;
+
+    if (res.data?.otp_enabled) {
+      statusMsg.innerHTML = "<span style='color: green;'>User is verified</span>";
+      showProducts();
+      return true;
+    }
+
+    statusMsg.innerHTML = `<div style='color: red; margin-top: 0.5rem; line-height: 1.5;'>
+        User's 2FA is not enabled. Please follow these steps to enable it:<br/>
+        1. Click the "Wallets" tab from the navbar.<br/>
+        2. Scroll down to "Enable 2FA for Wallet".<br/>
+        3. Enter your email and click "Generate 2FA".<br/>
+        4. Scan the QR code using Google Authenticator.<br/>
+        5. Enter the OTP and click "Verify & Enable".
+      </div>`;
+    hideProducts();
+    return false;
+  } catch (err) {
+    if (!isCurrent()) return false;
+    statusMsg.innerHTML = `<span style='color: red;'>Error: ${err.message}</span>`;
+    hideProducts();
+    return false;
+  }
+}
+
+/** Wallet lookup + 2FA check; shows products when verified. */
+async function autoCheckWalletAnd2FA(email) {
+  const trimmed = String(email || "").trim();
+  const input = document.getElementById("home-wallet-email");
+  const isCurrent = () => String(input?.value || "").trim() === trimmed;
+
+  if (!isValidEmail(trimmed)) {
+    if (!isCurrent()) return;
+    document.getElementById("home-wallet-status").innerHTML = "";
+    document.getElementById("home-2fa-status-msg").innerHTML = "";
+    hideProducts();
+    return;
+  }
+
+  const walletState = await refreshWallet(trimmed, { silentEmpty: true, isCurrent });
+  if (!isCurrent() || walletState !== "ready") return;
+
+  await check2FAStatus(trimmed, { silentEmpty: true, isCurrent });
+}
+
+let emailAutoCheckTimer = null;
+
+document.getElementById("home-wallet-email")?.addEventListener("input", (e) => {
+  const email = e.target.value;
+  clearTimeout(emailAutoCheckTimer);
+  emailAutoCheckTimer = setTimeout(() => {
+    autoCheckWalletAnd2FA(email);
+  }, 600);
+});
+
+document.getElementById("home-wallet-email")?.addEventListener("change", (e) => {
+  clearTimeout(emailAutoCheckTimer);
+  autoCheckWalletAnd2FA(e.target.value);
+});
+
+document.getElementById("home-wallet-refresh")?.addEventListener("click", async () => {
+  const email = document.getElementById("home-wallet-email").value.trim();
+  const walletState = await refreshWallet(email);
+  if (walletState === "ready") await check2FAStatus(email);
 });
 
 document.getElementById("close-2fa-modal")?.addEventListener("click", () => {
@@ -280,19 +420,26 @@ document.getElementById("enable-2fa-form")?.addEventListener("submit", async (e)
   const email = document.getElementById("modal-2fa-email").value;
   const token = document.getElementById("modal-2fa-otp").value;
   const btn = document.getElementById("modal-2fa-verify-btn");
-  
+
   btn.disabled = true;
   btn.textContent = "Verifying...";
-  
+
   try {
-    const res = await storeApi.gatewayCreateWallet({ email, currency: "XDC", fiatCurrency: "usd", network: "Xinfin", otp: token });
+    const res = await storeApi.gatewayCreateWallet({
+      email,
+      currency: "XDC",
+      fiatCurrency: "usd",
+      network: "Xinfin",
+      otp: token,
+    });
     if (res.success || res.status) {
       toast("2FA enabled and Wallet retrieved successfully!");
       document.getElementById("enable-2fa-modal").close();
       document.getElementById("enable-2fa-form").reset();
-      
+
       const statusDiv = document.getElementById("home-wallet-status");
-      statusDiv.innerHTML = `Wallet successfully retrieved!<br/>Balance: <strong>${res.data?.balance || 0} XDC</strong><br/>Address: <code>${res.data?.walletAddress || 'N/A'}</code>`;
+      statusDiv.innerHTML = `Wallet successfully retrieved!<br/>Balance: <strong>${res.data?.balance || 0} XDC</strong><br/>Address: <code>${res.data?.walletAddress || "N/A"}</code>`;
+      await check2FAStatus(email, { silentEmpty: true });
     } else {
       toast(res.message || "Invalid OTP", "error");
     }
@@ -305,73 +452,96 @@ document.getElementById("enable-2fa-form")?.addEventListener("submit", async (e)
 });
 
 document.getElementById("home-wallet-2fa-status")?.addEventListener("click", async () => {
-  const email = document.getElementById("home-wallet-email").value;
-  const statusMsg = document.getElementById("home-2fa-status-msg");
-  if (!email) return toast("Please enter customer email", "error");
-
-  statusMsg.innerHTML = "Checking 2FA status...";
-  
-  try {
-    const res = await storeApi.gatewayUser2FAStatus({ email });
-    if (res.data?.otp_enabled) {
-      statusMsg.innerHTML = "<span style='color: green;'>User is verified</span>";
-      document.getElementById("products-section").classList.remove("hidden");
-    } else {
-      statusMsg.innerHTML = `<div style='color: red; margin-top: 0.5rem; line-height: 1.5;'>
-        User's 2FA is not enabled. Please follow these steps to enable it:<br/>
-        1. Click the "Wallets" tab from the navbar.<br/>
-        2. Scroll down to "Enable 2FA for Wallet".<br/>
-        3. Enter your email and click "Generate 2FA".<br/>
-        4. Scan the QR code using Google Authenticator.<br/>
-        5. Enter the OTP and click "Verify & Enable".
-      </div>`;
-      document.getElementById("products-section").classList.add("hidden");
-    }
-  } catch (err) {
-    statusMsg.innerHTML = `<span style='color: red;'>Error: ${err.message}</span>`;
-  }
+  const email = document.getElementById("home-wallet-email").value.trim();
+  await check2FAStatus(email);
 });
 
 async function updateRatePreview() {
   const form = document.getElementById("checkout-form");
   const preview = document.getElementById("rate-preview");
+  const btn = document.getElementById("calculate-price-btn");
   const amount = form.amount.value;
   const fiatCurrency = form.fiatCurrency.value;
   const currency = form.currency.value;
 
-  if (!amount || !config?.gatewayConfigured) {
-    preview.classList.add("hidden");
+  if (!amount) {
+    toast("Enter an amount first", "error");
+    return;
+  }
+  if (!currency) {
+    toast("Select a crypto currency first", "error");
+    return;
+  }
+  if (!config?.gatewayConfigured) {
+    preview.classList.remove("hidden");
+    preview.innerHTML = `<span class="hint">Gateway is not configured</span>`;
+    setCryptoAmountDisplay("—");
     return;
   }
 
   preview.classList.remove("hidden");
   preview.innerHTML = "Fetching rate via <code>GET /api/rates/{currencyId}</code>…";
+  setCryptoAmountDisplay("Calculating…");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Calculating…";
+  }
 
   try {
     const quote = await storeApi.getQuote({ amount, fiatCurrency, currency });
-    if (quote.success) {
+    const cryptoAmount = quote.data?.cryptoAmount ?? quote.cryptoAmount;
+    const rate = Number(quote.data?.rate ?? quote.rate);
+    const ok = quote.success === true || quote.status === true;
+
+    if (ok && cryptoAmount != null) {
+      setCryptoAmountDisplay(`${cryptoAmount} ${currency}`);
       preview.innerHTML = `
-        <strong>Rate quote</strong> (1 ${currency} = ${Number(quote.data.rate).toLocaleString()} ${fiatCurrency.toUpperCase()})
-        <br/>Customer pays ≈ <strong>${quote.data.cryptoAmount} ${currency}</strong> for ${formatPrice(amount, fiatCurrency)}
+        <strong>Rate quote</strong> — 1 ${esc(currency)} = ${rate.toLocaleString(undefined, { maximumFractionDigits: 8 })} ${esc(fiatCurrency.toUpperCase())}
+        <br/>${esc(formatPrice(amount, fiatCurrency))} ≈ <strong>${esc(String(cryptoAmount))} ${esc(currency)}</strong>
       `;
     } else {
+      setCryptoAmountDisplay("—");
       preview.innerHTML = `<span class="hint">${esc(quote.message || "Rate unavailable")}</span>`;
     }
   } catch (e) {
+    setCryptoAmountDisplay("—");
     preview.innerHTML = `<span class="hint">Rate error: ${esc(e.message)}</span>`;
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Calculate Price";
+    }
   }
 }
+
+function setCryptoAmountDisplay(text) {
+  const el = document.getElementById("crypto-amount-value");
+  if (el) el.textContent = text;
+}
+
+function resetCryptoQuote() {
+  setCryptoAmountDisplay("—");
+  const preview = document.getElementById("rate-preview");
+  if (preview) {
+    preview.classList.add("hidden");
+    preview.innerHTML = "";
+  }
+}
+
+document.getElementById("calculate-price-btn")?.addEventListener("click", () => {
+  updateRatePreview();
+});
 
 document.getElementById("checkout-network")?.addEventListener("change", (e) => {
   const list = catalog?.networkWithCurrency?.data || [];
   updateCurrencySelectForNetwork(e.target.value, list);
-  updateRatePreview();
+  resetCryptoQuote();
 });
 
 ["checkout-currency", "checkout-fiat", "checkout-form amount"].forEach((sel) => {
   const el = sel.includes(" ") ? document.querySelector(`#checkout-form [name="${sel.split(" ")[1]}"]`) : document.getElementById(sel);
-  el?.addEventListener("change", updateRatePreview);
-  el?.addEventListener("input", updateRatePreview);
+  el?.addEventListener("change", resetCryptoQuote);
+  el?.addEventListener("input", resetCryptoQuote);
 });
 
 document.getElementById("close-checkout").addEventListener("click", () => {
