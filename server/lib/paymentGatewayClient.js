@@ -154,10 +154,13 @@ class PaymentGatewayClient {
     });
   }
 
-  async getWalletBalance({ email, currency }) {
+  async getWalletBalance({ email, currency, network, fiatCurrency, otp }) {
     return this.request("POST", "/api/wallet-balance", {
       email,
       currency,
+      ...(network ? { network } : {}),
+      ...(fiatCurrency ? { fiatCurrency } : {}),
+      ...(otp ? { otp } : {}),
     });
   }
 

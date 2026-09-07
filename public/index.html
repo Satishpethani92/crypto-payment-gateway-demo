@@ -37,10 +37,12 @@
       <section id="tab-store" class="tab active">
         <div class="card" style="margin-bottom: 2rem;">
           <h3>User Wallet</h3>
-          <p class="hint">Enter your email — wallet and 2FA status are checked automatically. Products appear when the user is verified.</p>
-          <div style="display: flex; gap: 0.5rem; max-width: 600px; margin-top: 1rem;">
-            <input type="email" id="home-wallet-email" placeholder="Customer Email (e.g. user@example.com)" style="flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--text); font-size: 0.875rem;" />
-            <button class="btn btn-primary" id="home-wallet-refresh">Refresh</button>
+          <p class="hint">Create wallet needs no OTP. Balance requires wallet-user 2FA OTP (enable 2FA in Wallets tab first).</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; max-width: 720px; margin-top: 1rem;">
+            <input type="email" id="home-wallet-email" placeholder="Customer Email" style="flex: 1; min-width: 220px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--text); font-size: 0.875rem;" />
+            <input type="text" id="home-wallet-otp" placeholder="2FA OTP (for balance)" maxlength="6" style="width: 140px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--text); font-size: 0.875rem;" />
+            <button class="btn btn-primary" id="home-wallet-refresh">Create / Refresh</button>
+            <button class="btn btn-secondary" id="home-wallet-balance">Get Balance</button>
             <button class="btn btn-secondary" id="home-wallet-2fa-status">Check 2FA Status</button>
           </div>
           <div id="home-wallet-status" class="mt hint"></div>
@@ -134,9 +136,11 @@
           </div>
           <div class="card">
             <h3>Check Wallet Balance</h3>
+            <p class="hint">Requires wallet-user 2FA OTP. Enable 2FA below first if needed.</p>
             <form id="balance-form" class="form">
               <label>Email <input type="email" name="email" required /></label>
               <label>Currency <select name="currency" id="balance-currency"></select></label>
+              <label>2FA OTP <input type="text" name="otp" required placeholder="123456" maxlength="6" /></label>
               <button type="submit" class="btn btn-secondary">Get Balance</button>
             </form>
             <pre id="balance-result" class="code-block hidden"></pre>
@@ -350,7 +354,7 @@
           <h3>Enable 2FA</h3>
           <button type="button" class="close-btn" id="close-2fa-modal">&times;</button>
         </div>
-        <p class="hint">Please scan the QR code to enable 2FA for your account.</p>
+        <p class="hint">Scan the QR and enter OTP to enable wallet-user 2FA. After this, use OTP on Get Balance.</p>
         <div style="text-align: center; margin: 1rem 0;">
           <img id="modal-2fa-qr" src="" alt="2FA QR Code" style="border: 1px solid #333; border-radius: 8px; padding: 10px; background: white; max-width: 200px;" />
         </div>
@@ -359,7 +363,7 @@
           <label>OTP Code <input type="text" id="modal-2fa-otp" required placeholder="123456" /></label>
         </div>
         <div class="modal-footer">
-          <button type="submit" class="btn btn-primary" id="modal-2fa-verify-btn">Create Wallet</button>
+          <button type="submit" class="btn btn-primary" id="modal-2fa-verify-btn">Verify & Enable 2FA</button>
         </div>
       </form>
     </dialog>
