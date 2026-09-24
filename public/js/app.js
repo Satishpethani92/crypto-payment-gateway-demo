@@ -284,7 +284,7 @@ function showProducts() {
   document.getElementById("products-section")?.classList.remove("hidden");
 }
 
-/** Create/ensure wallet only — no balance (balance needs OTP via wallet-balance). */
+/** Create/ensure wallet only — balance via separate Get Balance (merchant-scoped). */
 /** @returns {Promise<"ready"|"error"|"empty">} */
 async function refreshWallet(email, { silentEmpty = false, isCurrent = () => true } = {}) {
   const statusDiv = document.getElementById("home-wallet-status");
@@ -311,7 +311,7 @@ async function refreshWallet(email, { silentEmpty = false, isCurrent = () => tru
     }
 
     const addr = createRes.data?.walletAddress || "N/A";
-    statusDiv.innerHTML = `Wallet ready (create-wallet — no balance).<br/>Address: <code>${addr}</code><br/><span class="hint">Enter 2FA OTP and click Get Balance to view balance.</span>`;
+    statusDiv.innerHTML = `Wallet ready.<br/>Address: <code>${addr}</code><br/><span class="hint">Click Get Balance to view balance (merchant-scoped).</span>`;
     return "ready";
   } catch (err) {
     if (!isCurrent()) return "empty";
@@ -321,26 +321,22 @@ async function refreshWallet(email, { silentEmpty = false, isCurrent = () => tru
   }
 }
 
-/** Fetch balance via POST /api/wallet-balance — requires user 2FA OTP. */
-async function fetchHomeWalletBalance(email, otp) {
+/** Fetch balance via POST /api/wallet-balance — merchantId scoped, no user OTP. */
+async function fetchHomeWalletBalance(email) {
   const statusDiv = document.getElementById("home-wallet-status");
   if (!email) {
     toast("Please enter customer email", "error");
     return;
   }
-  if (!otp) {
-    toast("Enter 2FA OTP to get balance", "error");
-    return;
-  }
 
-  statusDiv.innerHTML = "Fetching balance (wallet-balance + OTP)...";
+  statusDiv.innerHTML = "Fetching balance...";
   try {
     const balRes = await storeApi.gatewayWalletBalance({
       email,
       currency: "XDC",
       fiatCurrency: "usd",
       network: "Xinfin",
-      otp,
+      merchantId: config?.merchantId,
     });
 
     if (balRes.success === false || balRes.status === false) {
@@ -349,7 +345,7 @@ async function fetchHomeWalletBalance(email, otp) {
       return;
     }
 
-    statusDiv.innerHTML = `Balance verified with 2FA.<br/>Balance: <strong>${balRes.data?.balance ?? 0} XDC</strong><br/>Address: <code>${balRes.data?.walletAddress || "N/A"}</code>`;
+    statusDiv.innerHTML = `Balance: <strong>${balRes.data?.balance ?? 0} XDC</strong><br/>Address: <code>${balRes.data?.walletAddress || "N/A"}</code>`;
     toast("Balance retrieved", "success");
   } catch (err) {
     statusDiv.innerHTML = `Error: ${err.message}`;
@@ -442,8 +438,7 @@ document.getElementById("home-wallet-refresh")?.addEventListener("click", async 
 
 document.getElementById("home-wallet-balance")?.addEventListener("click", async () => {
   const email = document.getElementById("home-wallet-email").value.trim();
-  const otp = document.getElementById("home-wallet-otp")?.value.trim();
-  await fetchHomeWalletBalance(email, otp);
+  await fetchHomeWalletBalance(email);
 });
 
 document.getElementById("close-2fa-modal")?.addEventListener("click", () => {
@@ -462,14 +457,11 @@ document.getElementById("enable-2fa-form")?.addEventListener("submit", async (e)
   try {
     const res = await storeApi.gatewayUserOTPVerify({ email, token });
     if (res.success || res.status) {
-      toast("2FA enabled. Use OTP with Get Balance.");
+      toast("2FA enabled. Use OTP for internal payments.");
       document.getElementById("enable-2fa-modal").close();
       document.getElementById("enable-2fa-form").reset();
       await check2FAStatus(email, { silentEmpty: true });
-      if (token) {
-        document.getElementById("home-wallet-otp").value = token;
-        await fetchHomeWalletBalance(email, token);
-      }
+      await fetchHomeWalletBalance(email);
     } else {
       toast(res.message || "Invalid OTP", "error");
     }
@@ -860,13 +852,13 @@ function getExplorerForm(api) {
         <div class="form inline-form">
           <input type="email" id="explorer-balance-email" placeholder="email" />
           <input type="text" id="explorer-balance-currency" placeholder="currency" value="XDC" />
-          <input type="text" id="explorer-balance-otp" placeholder="2FA OTP (required)" maxlength="6" />
+          <input type="text" id="explorer-balance-merchant" placeholder="merchantId" value="${config?.merchantId || ""}" />
           <button class="btn btn-primary btn-sm" data-action="wallet-balance">Call POST /api/wallet-balance</button>
         </div>`;
     case "/api/create-wallet":
       return `
         <div class="form">
-          <p class="hint">No user OTP. Response omits balance — use wallet-balance + OTP for balance.</p>
+          <p class="hint">No user OTP. Use wallet-balance + merchantId for balance.</p>
           <input type="email" id="exp-wallet-email" placeholder="email" />
           <input type="text" id="exp-wallet-currency" placeholder="currency" value="XDC" />
           <input type="text" id="exp-wallet-network" placeholder="network" value="Xinfin" />
@@ -928,7 +920,7 @@ async function runExplorerAction(btn) {
         result = await storeApi.gatewayWalletBalance({
           email: document.getElementById("explorer-balance-email").value,
           currency: document.getElementById("explorer-balance-currency").value,
-          otp: document.getElementById("explorer-balance-otp").value,
+          merchantId: document.getElementById("explorer-balance-merchant").value || config?.merchantId,
         });
         break;
       case "create-wallet":

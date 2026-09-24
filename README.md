@@ -134,9 +134,9 @@ See `server/lib/paymentGatewayClient.js` for the full client implementation.
 - **Refund** → `POST /api/refund`
 
 ### Wallets
-- Create wallet → `POST /api/create-wallet` (**no** user OTP; **balance omitted**)
-- Check balance → `POST /api/wallet-balance` (**requires** wallet-user 2FA `otp`)
-- Enable user 2FA → `POST /api/user-otp/generate` + `POST /api/user-otp/verify`
+- Create wallet → `POST /api/create-wallet` (**no** user OTP)
+- Check balance → `POST /api/wallet-balance` (**requires** `merchantId`; user must belong to merchant; **no** user OTP)
+- Enable user 2FA → `POST /api/user-otp/generate` + `POST /api/user-otp/verify` (for **internal** payments)
 - Dropdowns from Network With Currency API
 
 ### API Explorer

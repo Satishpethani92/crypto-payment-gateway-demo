@@ -220,7 +220,10 @@ app.post("/api/gateway/wallet-balance", async (req, res) => {
   const client = getGatewayClient();
   if (!client) return gatewayNotConfigured(res);
   try {
-    const result = await client.getWalletBalance(req.body);
+    const result = await client.getWalletBalance({
+      ...req.body,
+      merchantId: req.body.merchantId || process.env.MERCHANT_ID,
+    });
     logGatewayCall("POST /api/wallet-balance", result);
     res.status(result.status).json(result.data);
   } catch (err) {
@@ -524,22 +527,19 @@ app.post("/api/wallets/balance", async (req, res) => {
   const client = getGatewayClient();
   if (!client) return gatewayNotConfigured(res);
 
-  const { email, currency, otp, network, fiatCurrency } = req.body;
+  const { email, currency, network, fiatCurrency, merchantId } = req.body;
   if (!email || !currency) {
     return res.status(400).json({ success: false, message: "email and currency required" });
   }
-  if (!otp) {
-    return res.status(401).json({
-      success: false,
-      status: false,
-      statusCode: 401,
-      message: "User 2FA OTP is required to fetch wallet balance",
-      error: "User 2FA OTP is required to fetch wallet balance",
-    });
-  }
 
   try {
-    const result = await client.getWalletBalance({ email, currency, otp, network, fiatCurrency });
+    const result = await client.getWalletBalance({
+      email,
+      currency,
+      network,
+      fiatCurrency,
+      merchantId: merchantId || process.env.MERCHANT_ID,
+    });
     logGatewayCall("POST /api/wallet-balance", result);
     res.status(result.status).json(result.data);
   } catch (err) {

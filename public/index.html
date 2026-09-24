@@ -37,10 +37,9 @@
       <section id="tab-store" class="tab active">
         <div class="card" style="margin-bottom: 2rem;">
           <h3>User Wallet</h3>
-          <p class="hint">Create wallet needs no OTP. Balance requires wallet-user 2FA OTP (enable 2FA in Wallets tab first).</p>
+          <p class="hint">Create wallet, then Get Balance (merchant-scoped — no user OTP). User 2FA is only for internal checkout.</p>
           <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; max-width: 720px; margin-top: 1rem;">
             <input type="email" id="home-wallet-email" placeholder="Customer Email" style="flex: 1; min-width: 220px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--text); font-size: 0.875rem;" />
-            <input type="text" id="home-wallet-otp" placeholder="2FA OTP (for balance)" maxlength="6" style="width: 140px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--text); font-size: 0.875rem;" />
             <button class="btn btn-primary" id="home-wallet-refresh">Create / Refresh</button>
             <button class="btn btn-secondary" id="home-wallet-balance">Get Balance</button>
             <button class="btn btn-secondary" id="home-wallet-2fa-status">Check 2FA Status</button>
@@ -136,11 +135,10 @@
           </div>
           <div class="card">
             <h3>Check Wallet Balance</h3>
-            <p class="hint">Requires wallet-user 2FA OTP. Enable 2FA below first if needed.</p>
+            <p class="hint">Requires <code>merchantId</code> (auto-sent from demo config). User must belong to this merchant. No OTP.</p>
             <form id="balance-form" class="form">
               <label>Email <input type="email" name="email" required /></label>
               <label>Currency <select name="currency" id="balance-currency"></select></label>
-              <label>2FA OTP <input type="text" name="otp" required placeholder="123456" maxlength="6" /></label>
               <button type="submit" class="btn btn-secondary">Get Balance</button>
             </form>
             <pre id="balance-result" class="code-block hidden"></pre>
