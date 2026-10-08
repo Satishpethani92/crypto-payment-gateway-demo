@@ -509,13 +509,13 @@ app.post("/api/wallets", async (req, res) => {
   const client = getGatewayClient();
   if (!client) return gatewayNotConfigured(res);
 
-  const { email, currency, fiatCurrency, network } = req.body;
+  const { email, currency, fiatCurrency, network, otp } = req.body;
   if (!email || !currency || !fiatCurrency || !network) {
     return res.status(400).json({ success: false, message: "email, currency, fiatCurrency, network required" });
   }
 
   try {
-    const result = await client.createWallet({ email, currency, fiatCurrency, network });
+    const result = await client.createWallet({ email, currency, fiatCurrency, network, otp });
     logGatewayCall("POST /api/create-wallet", result);
     res.status(result.status).json(result.data);
   } catch (err) {

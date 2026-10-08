@@ -755,28 +755,123 @@ document.getElementById("wallet-network")?.addEventListener("change", (e) => {
   updateCurrencySelectForNetwork(e.target.value, list);
 });
 
+document.getElementById("copy-create-wallet-secret")?.addEventListener("click", () => {
+  const secret = document.getElementById("create-wallet-secret")?.textContent;
+  if (secret) {
+    navigator.clipboard.writeText(secret);
+    toast("Secret copied to clipboard!", "success");
+  }
+});
+
 document.getElementById("wallet-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const btn = document.getElementById("wallet-submit-btn") || e.target.querySelector('button[type="submit"]');
+  const otpInput = document.getElementById("wallet-otp-input");
+  const isOtpFlow = otpInput && otpInput.value.trim().length > 0;
+  const originalText = btn ? btn.textContent : "Create Wallet";
+  
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = isOtpFlow ? "Verifying OTP..." : "Creating...";
+  }
+
   const fd = new FormData(e.target);
+  const data = Object.fromEntries(fd);
+  const pre = document.getElementById("wallet-result");
+  const qrSection = document.getElementById("create-wallet-qr-section");
+  const qrImg = document.getElementById("create-wallet-qr-img");
+  const secretCode = document.getElementById("create-wallet-secret");
+
   try {
-    const result = await storeApi.createWallet(Object.fromEntries(fd));
-    toast(result.success ? "Wallet created" : result.message, result.success ? "success" : "error");
-    if (result.success) e.target.reset();
+    const result = await storeApi.createWallet(data);
+    const isSuccess = result.status === true || result.success === true;
+
+    if (pre) {
+      pre.classList.remove("hidden");
+      pre.textContent = JSON.stringify(result, null, 2);
+    }
+
+    // Case 1: Gateway returns QR / 2FA setup requirement
+    if (result.data && (result.data.otpauth_url || result.data.base32)) {
+      if (qrSection) qrSection.classList.remove("hidden");
+      if (secretCode) secretCode.textContent = result.data.base32 || "";
+      if (qrImg && result.data.otpauth_url) {
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(result.data.otpauth_url)}`;
+      }
+      if (btn) btn.textContent = "Verify OTP & Complete";
+      if (otpInput) {
+        otpInput.focus();
+        otpInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      toast("2FA setup required: Scan QR code and enter OTP", "info");
+      return;
+    }
+
+    // Case 2: Wallet created / retrieved successfully
+    if (isSuccess && result.data && result.data.walletAddress) {
+      if (qrSection) qrSection.classList.add("hidden");
+      if (otpInput) otpInput.value = "";
+      if (btn) btn.textContent = "Create Wallet";
+
+      toast(result.message || "Wallet ready!", "success");
+
+      const balanceEmail = document.querySelector('#balance-form input[name="email"]');
+      if (balanceEmail && !balanceEmail.value) balanceEmail.value = data.email;
+      const tfaEmail = document.getElementById("wallet-2fa-email");
+      if (tfaEmail && !tfaEmail.value) tfaEmail.value = data.email;
+    } else {
+      toast(result.message || (isSuccess ? "Wallet ready" : "Failed to create wallet"), isSuccess ? "success" : "error");
+    }
   } catch (err) {
+    if (pre) {
+      pre.classList.remove("hidden");
+      pre.textContent = JSON.stringify({ error: err.message }, null, 2);
+    }
     toast(err.message, "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      if (!qrSection || qrSection.classList.contains("hidden")) {
+        btn.textContent = "Create Wallet";
+      } else {
+        btn.textContent = "Verify OTP & Complete";
+      }
+    }
   }
 });
 
 document.getElementById("balance-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]');
+  const originalText = btn ? btn.textContent : "Get Balance";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Checking...";
+  }
   const fd = new FormData(e.target);
+  const pre = document.getElementById("balance-result");
   try {
     const result = await storeApi.getWalletBalance(Object.fromEntries(fd));
-    const pre = document.getElementById("balance-result");
-    pre.classList.remove("hidden");
-    pre.textContent = JSON.stringify(result, null, 2);
+    const isSuccess = result.status === true || result.success === true;
+    if (pre) {
+      pre.classList.remove("hidden");
+      pre.textContent = JSON.stringify(result, null, 2);
+    }
+    toast(
+      isSuccess ? (result.message || "Balance fetched") : (result.message || "Failed to fetch balance"),
+      isSuccess ? "success" : "error"
+    );
   } catch (err) {
+    if (pre) {
+      pre.classList.remove("hidden");
+      pre.textContent = JSON.stringify({ error: err.message }, null, 2);
+    }
     toast(err.message, "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   }
 });
 

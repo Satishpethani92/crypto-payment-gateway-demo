@@ -130,8 +130,31 @@
                   <option value="eur">EUR</option>
                 </select>
               </label>
-              <button type="submit" class="btn btn-primary">Create Wallet</button>
+              <label id="wallet-otp-label">2FA OTP (if required / after scanning QR)
+                <input type="text" name="otp" id="wallet-otp-input" placeholder="Enter 6-digit OTP (e.g. 123456)" />
+              </label>
+              <button type="submit" class="btn btn-primary" id="wallet-submit-btn">Create Wallet</button>
             </form>
+
+            <div id="create-wallet-qr-section" class="hidden mt" style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px; padding: 1rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <strong style="color: #60a5fa;">2FA Setup Required</strong>
+                <span class="auth-badge">Scan & Enter OTP</span>
+              </div>
+              <p class="hint" style="margin-top: 0; margin-bottom: 0.75rem;">Scan this QR code in Google Authenticator or your 2FA app, then enter the 6-digit code above and click <strong>Verify OTP & Create Wallet</strong>.</p>
+              <div style="text-align: center; margin-bottom: 0.75rem;">
+                <img id="create-wallet-qr-img" src="" alt="2FA QR Code" style="border: 2px solid #3b82f6; border-radius: 8px; padding: 8px; background: white; max-width: 180px; height: auto;" />
+              </div>
+              <div style="margin-bottom: 0.5rem;">
+                <small class="hint">Secret (Base32):</small>
+                <div class="copy-row" style="margin-top: 0.25rem;">
+                  <code id="create-wallet-secret" style="font-size: 0.85rem; word-break: break-all;"></code>
+                  <button type="button" class="btn btn-secondary btn-sm" id="copy-create-wallet-secret">Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <pre id="wallet-result" class="code-block hidden mt"></pre>
           </div>
           <div class="card">
             <h3>Check Wallet Balance</h3>
